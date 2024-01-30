@@ -4,6 +4,7 @@ import torch
 from tqdm import tqdm
 
 from math_dataset import MathDataset
+from util import _clean_numbers, last_boxed_only_string
 
 
 class SampleTokenizer(MathDataset):
@@ -102,4 +103,44 @@ class SampleTokenizer(MathDataset):
             'label_ids_list': label_ids,
             'attention_mask_list': inputs['attention_mask'] if self.mode in {'bert-base-uncased', 't5-base-uncased'} else None
         }
-            
+
+    def clean_filter_sample_eval(self, sample):
+        if sample is None:
+            return None
+
+        question, answer = sample
+        if self.clean_numbers:
+            question = _clean_numbers(question)
+            answer = _clean_numbers(answer)
+
+        assert not answer.isspace()
+
+        question_ids = torch.LongTensor(self.tokenizer.encode("\nQUESTION:\n" + question, verbose=False))
+        sep_ids = torch.LongTensor(self.tokenizer.encode("\nFULL SOLUTION.\n", verbose=False))
+        answer_final_ids = torch.LongTensor(self.tokenizer.encode(answer, verbose=False))
+
+        inputs = torch.cat([
+            question_ids,
+            sep_ids
+        ], dim=0)
+
+        label_ids = torch.cat([answer_final_ids.clone()], dim=0)
+
+        if inputs.shape[0] + label_ids.shape[0] >  self.max_tokens:
+            return None
+
+        if self.mode in {'bert-base-uncased'}:
+            random_tensor = torch.rand(inputs['input_ids'].shape)
+            masked_tensor = (random_tensor < 0.15) * (inputs['input_ids'] != 101) * (inputs['input_ids'] != 102) * (
+                    inputs['input_ids'] != 0)
+            nonzero_indices = []
+            for i in range(len(masked_tensor)):
+                nonzero_indices.append(torch.flatten(masked_tensor[i].nonzero()).tolist())
+            for i in range(len(inputs['input_ids'])):
+                inputs['input_ids'] = inputs['input_ids'][i, nonzero_indices[i]] != 103
+
+        return {
+            'input_ids_list': inputs['input_ids'].tolist(),
+            'label_ids_list': label_ids.tolist(),
+            'attention_mask_list': inputs['attention_mask'] if self.mode in {'bert-base-uncased', 't5-base-uncased'} else None
+        }
