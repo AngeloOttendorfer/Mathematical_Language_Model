@@ -11,6 +11,11 @@ from sample_tokenizer import SampleTokenizer
 
 
 class Trainer(transformers.Trainer):
+    """
+    Using the AdamW Optimizer to hinder overfitting and utilize the weight decay to resolve the weight reduction problem.
+    Also specifying the learning rate strategy (constant or linear warmup where the learning rate decreases linearly)
+    """
+
     def create_optimizer_and_scheduler(self, num_training_steps: int):
         if self.optimizer is None:
             print("Making AdamW Optimizer")
@@ -39,7 +44,7 @@ class Trainer(transformers.Trainer):
             else:
                 print("Using Linear warmup LR")
                 self.lr_scheduler = self.get_linear_schedule_with_warmup(
-                    self.optimizer, num_warmup_steps=self.warmup_steps, num_training_steps=num_training_steps
+                    self.optimizer, num_warmup_steps=self.args.warmup_steps, num_training_steps=num_training_steps
                 )
 
     @staticmethod
@@ -58,6 +63,14 @@ class Trainer(transformers.Trainer):
 
 
 def train_model(args, train_data):
+    """
+     Here a pretrained language model for example gpt2 will be fine-tuned on mathematical tasks
+    :param args: several arguments needed to train the model
+    :param train_data: the training dataset from get_dataset
+    :return: None
+    """
+
+    # Calculate the steps needed for the training process. Amount depends on the cpu or gpu being used
     if not args.save_steps:
         save_steps = len(train_data)
         save_steps = int(save_steps / args.grad_acc_steps)
@@ -71,6 +84,8 @@ def train_model(args, train_data):
         save_steps = args.save_steps
     print("Save Steps= ", save_steps)
 
+    # Specify if an existing trained model should be extended with additional training data for
+    # training or specify a particular pretrained language model for initial training
     if args.load:
         if args.arch in {'gpt2'}:
             model = transformers.GPT2LMHeadModel.from_pretrained(args.load)
@@ -99,6 +114,7 @@ def train_model(args, train_data):
 
     print(f"Setting up Trainer")
 
+    # All the training arguments used for training
     training_args = TrainingArguments(
         output_dir=args.save_dir,
         overwrite_output_dir=False,
@@ -134,11 +150,16 @@ def train_model(args, train_data):
 
     print(f"STARTING TRAINING, save_steps={save_steps}")
     trainer.train()
+    # Save the model for later extension or evaluation
     trainer.save_model(os.path.join(args.save_dir, "results"))
     print("Finished")
 
 
 def get_tokenizer(args):
+    """
+    :param args: the command line arguments (for the tokenizer we only need to specify the language model name
+    :return: the tokenizer for encoding the samples and decoding generated ids back to text
+    """
     tokenizer = None
     if args.arch in {'gpt2'}:
         tokenizer = transformers.GPT2Tokenizer.from_pretrained(args.arch, return_tensors='pt')
@@ -152,6 +173,10 @@ def get_tokenizer(args):
 
 
 def get_dataset(args):
+    """
+    :param args: the command line arguments  to retrieve the training data from the specified dataroot
+    :return: the training dataset
+    """
     tokenizer = get_tokenizer(args)
 
     train_data = []
@@ -274,19 +299,19 @@ def main():
 
     # Dataloading
     parser.add_argument('--math_dataroot', default=None, type=str, action='append',
-                        help="To specify the path where the train data and test data is stored")
+                        help="To specify the path where the train data is stored")
     parser.add_argument('--MATH-peek-min', default=0.1, type=float)
     parser.add_argument('--MATH-peek-max', default=1.0, type=float)
     parser.add_argument('--dataloader-num-workers', default=1, type=int)
 
     # Training
-    parser.add_argument('--epochs', default=1, type=int)
+    parser.add_argument('--epochs', default=1, type=int, help="Specifying the epochs being run during the training")
     parser.add_argument('--lr', default=5e-5, type=float, help="Specifying the learning rate strategy")
     parser.add_argument('--weight-decay', default=0.05, type=float,
                         help="Regularization parameter used by the AdamW Optimizer")
     parser.add_argument('--lr-warmup-steps', default=-1, type=int)
     parser.add_argument('--batch-size-per-replica', default=8, type=int, help="Specifying the Batch size")
-    parser.add_argument('--grad-acc-steps', default=4, type=int)
+    parser.add_argument('--grad-acc-steps', default=4, type=int, help="Used to accelerate the training process")
     parser.add_argument('--local_rank', default=-1, type=int)
     parser.add_argument('--tpu_num_cores', default=None, type=int,
                         help="Setting the amount of tpu cores available to accelerate processing")
@@ -294,7 +319,8 @@ def main():
     # Logging and stuff
     parser.add_argument('--save-dir', default="checkpoints/TEMP", type=str,
                         help="Specify the directory where to save the model after training")
-    parser.add_argument('--save-steps', default=0, type=int)
+    parser.add_argument('--save-steps', default=0, type=int, help="Save steps to not start all over again when "
+                                                                  "rerunning the training")
     parser.add_argument('--log-freq', default=5, type=int)
 
     args = parser.parse_args()

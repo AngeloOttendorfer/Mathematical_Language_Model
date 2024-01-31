@@ -11,6 +11,10 @@ from util import last_boxed_only_string
 
 
 def remove_boxed(s):
+    """
+    :param s: sample string
+    :return: string with removed boxed latex expression
+    """
     left = "\\boxed{"
     try:
         assert s[:len(left)] == left
@@ -36,9 +40,8 @@ def get_real_sol_idxs(tokens_sol, tokenizer):
             left_idx = i + 1  # Don't include the {
 
         if tokens_sol[0, i].item() == 50256:
-            right_idx = i - 2  # don't include the one token before the current one as well (usually the } from \boxed{})
+            right_idx = i - 2  # don't include the token before the current one (usually the } from \boxed{})
 
-    # Will error if either is not found, which we dont expect
     return left_idx, right_idx
 
 
@@ -47,6 +50,7 @@ def run_eval(args):
     tokenizer = None
     print(pprint.pformat(argsdict))
 
+    # Load a trained model for evaluation
     if args.load:
         if args.arch in {'gpt2'}:
             print(f"Loading model from {args.load}")
@@ -84,15 +88,9 @@ def run_eval(args):
 
     model = model.eval()
 
-    loss_moving_average = 0
-
     outputs = []
     answers = []
     fnames_list = []
-
-    cors = {}
-    subject_cors = {}
-    level_cors = {}
 
     with torch.no_grad():
         correct = 0
@@ -111,6 +109,7 @@ def run_eval(args):
             assert len(fnames) == 1
             fnames_list.append(fnames[0])
 
+            # ids upon the input_ids from the loaded model
             output_ids = model.generate(
                 batch['input_ids'],
                 num_beams=args.num_beams,
@@ -121,9 +120,9 @@ def run_eval(args):
 
             mean_probs_sol = 0
 
+            #  return the tokens which shall be decoded to a word
             output_tokens = get_model_output(batch['input_ids'][0], output_ids[0], tokenizer)
 
-            # Print this iteration
             output_str = tokenizer.decode(output_tokens)
             output_full = output_str
             output_str = last_boxed_only_string(output_str)
@@ -149,6 +148,7 @@ def run_eval(args):
             outputs.append(output)
             answers.append(answer)
 
+            # Check for answer equality and append it to either the amount of correct or wrong answer from the model
             equiv = is_equiv(output, answer)
             if equiv:
                 correct += 1
@@ -158,15 +158,12 @@ def run_eval(args):
 
             total += 1
 
-    subjects = ['Prealgebra', 'Algebra', 'Number Theory', 'Counting & Probability', 'Geometry', 'Intermediate Algebra',
-                'Precalculus']
-
     print(f"Average of mean_max_probs_correct = {sum(mean_max_probs_correct)}/{len(mean_max_probs_correct)} = ",
           sum(mean_max_probs_correct) / len(mean_max_probs_correct))
     print(f"Average of mean_max_probs_wrong   = {sum(mean_max_probs_wrong)}/{len(mean_max_probs_wrong)} = ",
           sum(mean_max_probs_wrong) / len(mean_max_probs_wrong))
 
-    # now save outputs and answers
+    # Saving the outputs and answers
     with open(f"outputs_answers_Temp2e-1_{args.arch}.txt", "w+") as f:
         for k, (output, answer, prob_type, prob_level, fname) in enumerate(
                 zip(outputs, answers, fnames_list)):
@@ -196,6 +193,11 @@ def get_model_output(context, full_output, tokenizer):
 
 
 def get_dataset(args):
+    """
+    A Key difference to the training dataset is that here the tokenizer is set to None
+    :param args: Command line arguments, specifically the dataroot argument
+    :return: the test dataset
+    """
     eval_datasets = []
 
     if args.math_dataroot:
@@ -309,13 +311,14 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(description="Language Modelling on Code")
-    parser.add_argument('--arch', default='gpt2', choices=transformers.GPT2_PRETRAINED_MODEL_ARCHIVE_LIST + transformers.BERT_PRETRAINED_MODEL_ARCHIVE_LIST + transformers.T5_PRETRAINED_MODEL_ARCHIVE_LIST)
-    parser.add_argument('--load', default=None, type=str)
+    parser.add_argument('--arch', default='gpt2', choices=transformers.GPT2_PRETRAINED_MODEL_ARCHIVE_LIST + transformers.BERT_PRETRAINED_MODEL_ARCHIVE_LIST + transformers.T5_PRETRAINED_MODEL_ARCHIVE_LIST,
+                        help="The name of the model to be used")
+    parser.add_argument('--load', default=None, type=str, help="Model to be loaded for evaluation")
     parser.add_argument('--num-beams', default=20, type=int)
 
     # Dataloading
-    parser.add_argument('--math_dataroot', default=None, type=str)
-    parser.add_argument('--math_mode', default='gpt2-eval', type=str)
+    parser.add_argument('--math_dataroot', default=None, type=str, help="To specify the path where the test data is stored")
+    parser.add_argument('--math_mode', default='gpt2-eval', type=str, help="Specify upon which pretrained model the evaluation shall be done")
     parser.add_argument('--peek-fraction', type=float, default=1.0)
 
     # Others

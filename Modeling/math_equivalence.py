@@ -127,20 +127,23 @@ def _strip_string(string):
     # remove spaces
     string = string.replace(" ", "")
 
-    # \frac1b or \frac12 --> \frac{1}{b} and \frac{1}{2}, etc. Even works with \frac1{72} (but not \frac{72}1). Also does a/b --> \\frac{a}{b}
+    # \frac1b or \frac12 --> \frac{1}{b} and \frac{1}{2}, etc. Also does a/b --> \\frac{a}{b}
     string = _fix_fracs(string)
 
-    # manually change 0.5 --> \frac{1}{2}
+    # manually changing 0.5 --> \frac{1}{2}
     if string == "0.5":
         string = "\\frac{1}{2}"
 
-    # NOTE: X/Y changed to \frac{X}{Y} in dataset, but in simple cases fix in case the model output is X/Y
+    # X/Y changed to \frac{X}{Y} in dataset
     string = _fix_a_slash_b(string)
 
     return string
 
 
 def is_equiv(str1, str2, verbose=False):
+    """
+    :return: True if the generated answer is equal to the ground truth answer and False otherwise
+    """
     if str1 is None and str2 is None:
         print("WARNING: Both None")
         return True
