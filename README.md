@@ -32,4 +32,8 @@ This process helps the model learn robust representations and contextual underst
 The second step will be to discover different approaches to enhance mathematical answer generation as the derivation of mathematical expression for models which is the big challenge because
 math problem oriented answer generation mostly remains very low on performance. 
 
+## Block diagram
+![Block_diagramm_Mathematical_Language_Model](https://github.com/AngeloOttendorfer/Mathematical_Language_Model/assets/101193795/ef16f13d-3ef5-4d5a-a4b3-5189ccf657ed)
+
+
 
