@@ -72,7 +72,7 @@ def run_eval(args):
             model = transformers.GPT2LMHeadModel.from_pretrained(args.arch)
         elif args.arch in {'bert-base-uncased'}:
             model = transformers.BertForMaskedLM.from_pretrained(args.arch)
-        elif args.arch in {'gpt2'}:
+        elif args.arch in {'t5-base-uncased'}:
             model = transformers.T5Model.from_pretrained(args.arch)
 
     eval_data = get_dataset(args)
