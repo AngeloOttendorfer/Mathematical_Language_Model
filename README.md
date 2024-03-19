@@ -17,7 +17,8 @@ BERT is pre-trained on large corpora using a masked language model objective. It
 This bidirectional approach enables the model to grasp the full context of a word, making it highly effective in understanding nuances and dependencies within sentences.
 Similar to GPT, BERT is built upon the Transformer architecture. This architecture utilizes self-attention mechanisms to weigh the importance of different words in a sentence. 
 BERT employs multiple layers of transformers, allowing it to capture hierarchical representations of language.
-BERT's pre-training involves two key objectives - masked language model (MLM) and next sentence prediction (NSP). 
+BERT's pre<img width="1346" alt="Bildschirmfoto 2024-03-19 um 06 36 49" src="https://github.com/AngeloOttendorfer/Mathematical_Language_Model/assets/101193795/a43a9cab-10fb-4e5c-adae-1b2d51b59aad">
+-training involves two key objectives - masked language model (MLM) and next sentence prediction (NSP). 
 MLM tasks require the model to predict masked-out words in a sentence, fostering a deep understanding of word relationships.
 NSP tasks involve predicting whether a pair of sentences is consecutive or not, promoting contextual understanding at a larger scale.
 
@@ -35,5 +36,14 @@ math problem oriented answer generation mostly remains very low on performance.
 ## Block diagram
 ![Block_diagramm_Mathematical_Language_Model](https://github.com/AngeloOttendorfer/Mathematical_Language_Model/assets/101193795/ef16f13d-3ef5-4d5a-a4b3-5189ccf657ed)
 
+## Execution
+* For the training (gpt2) run "python tune_model.py --dataroot 'DIRECTORY-TO-TRAININGDATA' --batch-size-per-replica BATCH-SIZE" in the command line
+* For the training (bert) run "python tune_model.py --dataroot 'DIRECTORY-TO-TRAININGDATA' --batch-size-per-replica BATCH-SIZE --arch 'bert-base-uncased'" in the command line
+* For the evaluation (gpt2) run "python eval_math_gpt.py --mathematica_dataroot 'DIRECTORY-TO-TESTDATA' --load 'DIRECTORY-TO-THE-CHECKPOINT-WITH-ALL-THE-RELEVANT-FILES'" in the      command line
+* For the evaluation (gpt2) run "python eval_math_gpt.py --mathematica_dataroot 'DIRECTORY-TO-TESTDATA' --load 'DIRECTORY-TO-THE-CHECKPOINT-WITH-ALL-THE-RELEVANT-FILES' --arch 'bert-base-uncased'" in the command line
 
+Die Batch-Size für die Evaluierung wird im Code angegeben (im DataLoader).
 
+<img width="1344" alt="Bildschirmfoto 2024-03-19 um 06 36 09" src="https://github.com/AngeloOttendorfer/Mathematical_Language_Model/assets/101193795/f129267d-089e-45a0-a10f-4bb44dab0eb1">
+
+<img width="1346" alt="Bildschirmfoto 2024-03-19 um 06 36 49" src="https://github.com/AngeloOttendorfer/Mathematical_Language_Model/assets/101193795/f92b280b-0ad4-4c96-8e92-a080df4562ba">
