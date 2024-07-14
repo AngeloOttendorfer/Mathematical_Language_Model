@@ -3,11 +3,11 @@ import os
 import torch
 from tqdm import tqdm
 
-from math_dataset import MathDataset
+from base_math_dataset import BaseMathDataset
 from util import _clean_numbers, last_boxed_only_string
 
 
-class SampleTokenizer(MathDataset):
+class Mathematica(BaseMathDataset):
     def __len__(self):
         return int(len(self.samples))
 
