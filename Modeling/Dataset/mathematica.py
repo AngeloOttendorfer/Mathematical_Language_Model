@@ -3,26 +3,30 @@ import os
 import torch
 from tqdm import tqdm
 
-from base_math_dataset import BaseMathDataset
-from util import _clean_numbers, last_boxed_only_string
+from Dataset.base_math_dataset import BaseMathDataset
+from Dataset.util import _clean_numbers, last_boxed_only_string
 
 
 class Mathematica(BaseMathDataset):
+
     def __len__(self):
-        return int(len(self.samples))
+        return int(len(self.samples) * self.len_multiplier)
 
     def initialize(self):
+        """
+        Set up self.samples by loading from the dataroot
+        """
+
         with open(self.dataroot, 'r') as fp:
             all_filenames = fp.readlines()
 
-        print(f"{self.__class__.__name__}: Loading samples from {len(all_filenames)}")
+        print(f"{self.__class__.__name__}: Loading samples from {len(all_filenames)} files.")
         samples_raw = []
         for fname in tqdm(all_filenames):
-            fname = fname.strip()
-            print(fname)
-
+            fname = fname.rstrip()
+            print("fname: " + str(fname))
             if not os.path.isfile(fname):
-                print(f"Skipping {fname}")
+                print(f"SKIPPING {fname}")
                 continue
             with open(fname, 'r') as fp:
                 question = ""
@@ -34,21 +38,29 @@ class Mathematica(BaseMathDataset):
                         reading_question = True
                     elif line == "Answer:\n":
                         if reading_question:
+                            # curr_section contains Q
                             question = curr_section
                         else:
+                            # curr_section contains an A
                             answers.append(curr_section)
                         curr_section = ""
                         reading_question = False
                     else:
                         curr_section += line
 
-                for a in answers:
-                    samples_raw.append((question, a, fname))
+                # The last answer needs to be recorded.
+                answers.append(curr_section)
+                fname = os.path.basename(fname)
 
-            self.samples = samples_raw
-            del samples_raw
+            for a in answers:
+                samples_raw.append((question, a, fname))
 
-            print(f"{self.__class__.__name__}: Loaded {len(self.samples)} samples.")
+        # manager = Manager()
+        # samples_raw = manager.list(samples_raw)
+        self.samples = samples_raw
+        del samples_raw
+
+        print(f"{self.__class__.__name__}: Loaded {len(self.samples)} samples.")
 
     def clean_filter_sample(self, sample):
         if sample == None:
@@ -73,7 +85,7 @@ class Mathematica(BaseMathDataset):
 
         answer_ids = torch.LongTensor(answer_ids)
 
-        inputs = torch.cat([
+        input_ids = torch.cat([
             question_ids,
             sep_ids,
             answer_ids
@@ -85,26 +97,16 @@ class Mathematica(BaseMathDataset):
             answer_ids.clone()
         ], dim=0)
 
-        if self.mode in {'bert-base-uncased'}:
-            random_tensor = torch.rand(inputs['input_ids'].shape)
-            masked_tensor = (random_tensor < 0.15) * (inputs['input_ids'] != 101) * (inputs['input_ids'] != 102) * (
-                        inputs['input_ids'] != 0)
-            nonzero_indices = []
-            for i in range(len(masked_tensor)):
-                nonzero_indices.append(torch.flatten(masked_tensor[i].nonzero()).tolist())
-            for i in range(len(inputs['input_ids'])):
-                inputs['input_ids'] = inputs['input_ids'][i, nonzero_indices[i]] != 103
-
-        input_ids = inputs['input_ids'].tolist()
-        label_ids = label_ids.tolist()
+        print("input_ids: " + str(input_ids))
+        print("label_ids: " + str(label_ids))
 
         return {
             'input_ids_list': input_ids,
             'label_ids_list': label_ids,
-            'attention_mask_list': inputs['attention_mask'] if self.mode in {'bert-base-uncased', 't5-base-uncased'} else None
         }
 
     def clean_filter_sample_eval(self, sample):
+        print("entering clean_filter_sample_eval")
         if sample is None:
             return None
 
@@ -119,28 +121,17 @@ class Mathematica(BaseMathDataset):
         sep_ids = torch.LongTensor(self.tokenizer.encode("\nFULL SOLUTION.\n", verbose=False))
         answer_final_ids = torch.LongTensor(self.tokenizer.encode(answer, verbose=False))
 
-        inputs = torch.cat([
+        input_ids = torch.cat([
             question_ids,
             sep_ids
         ], dim=0)
 
         label_ids = torch.cat([answer_final_ids.clone()], dim=0)
 
-        if inputs.shape[0] + label_ids.shape[0] >  self.max_tokens:
+        if input_ids.shape[0] + label_ids.shape[0] > self.max_tokens:
             return None
 
-        if self.mode in {'bert-base-uncased'}:
-            random_tensor = torch.rand(inputs['input_ids'].shape)
-            masked_tensor = (random_tensor < 0.15) * (inputs['input_ids'] != 101) * (inputs['input_ids'] != 102) * (
-                    inputs['input_ids'] != 0)
-            nonzero_indices = []
-            for i in range(len(masked_tensor)):
-                nonzero_indices.append(torch.flatten(masked_tensor[i].nonzero()).tolist())
-            for i in range(len(inputs['input_ids'])):
-                inputs['input_ids'] = inputs['input_ids'][i, nonzero_indices[i]] != 103
-
         return {
-            'input_ids_list': inputs['input_ids'].tolist(),
-            'label_ids_list': label_ids.tolist(),
-            'attention_mask_list': inputs['attention_mask'] if self.mode in {'bert-base-uncased', 't5-base-uncased'} else None
+            'input_ids_list': input_ids,
+            'label_ids_list': label_ids,
         }
