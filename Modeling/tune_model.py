@@ -7,7 +7,7 @@ import torch
 import transformers
 from transformers import TrainingArguments
 
-from sample_tokenizer import SampleTokenizer
+from Dataset.mathematica import Mathematica
 
 
 class Trainer(transformers.Trainer):
@@ -70,6 +70,8 @@ def train_model(args, train_data):
     :return: None
     """
 
+    model = None
+
     # Calculate the steps needed for the training process. Amount depends on the cpu or gpu being used
     if not args.save_steps:
         save_steps = len(train_data)
@@ -90,22 +92,10 @@ def train_model(args, train_data):
         if args.arch in {'gpt2'}:
             model = transformers.GPT2LMHeadModel.from_pretrained(args.load)
             print(f"Loaded GPT2 model from {args.load}")
-        elif args.arch in {'bert-base-uncased'}:
-            model = transformers.BertForMaskedLM.from_pretrained(args.load)
-            print(f"Loaded Bert model from {args.load}")
-        elif args.arch in {'t5-base-uncased'}:
-            model = transformers.T5Model.from_pretrained(args.load)
-            print(f"Loaded T5 model from {args.load}")
     else:
         if args.arch in {'gpt2'}:
             model = transformers.GPT2LMHeadModel.from_pretrained(args.arch, return_dict=True)
             print(f"Loaded GPT2 model from {args.arch}")
-        elif args.arch in {'bert-base-uncased'}:
-            model = transformers.BertForMaskedLM.from_pretrained(args.arch, return_dict=True)
-            print(f"Loaded Bert model from {args.arch}")
-        elif args.arch in {'t5-base-uncased'}:
-            model = transformers.T5Model.from_pretrained(args.arch, return_dict=True)
-            print(f"Loaded T5 model from {args.arch}")
 
     start_epoch = 0
     start_iteration = 0
@@ -183,105 +173,20 @@ def get_dataset(args):
 
     if args.math_dataroot:
         for math_dr in args.math_dataroot:
-            flist_find_roots = os.path.join(math_dr, "algebra/flist_find_roots.txt")
-            flist_invert_function = os.path.join(math_dr, "algebra/flist_invert_function.txt")
-
-            flist_derivatives = os.path.join(math_dr, "calculus/flist_derivatives.txt")
-            flist_integrals = os.path.join(math_dr, "calculus/flist_integrals.txt")
-
-            flist_polygons = os.path.join(math_dr, "geometry/flist_polygons.txt")
-            flist_triangles = os.path.join(math_dr, "geometry/flist_triangles.txt")
-
-            flist_determinant = os.path.join(math_dr, "linear_algebra/flist_determinant.txt")
-            flist_orthogonalize_vectors = os.path.join(math_dr, "linear_algebra/flist_orthogonalize_vectors.txt")
+            print("flist_find_roots: " + os.path.join(args.math_dataroot, "\\test_data\\algebra\\find_roots"))
+            flist_find_roots = os.path.join(args.math_dataroot, "\\test_data\\algebra\\find_roots")
 
             with open(flist_find_roots, "r") as f:
                 find_roots_num_files = len(f.readlines())
 
-            with open(flist_invert_function, "r") as f:
-                invert_function_num_files = len(f.readlines())
-
-            with open(flist_derivatives, "r") as f:
-                derivatives_num_files = len(f.readlines())
-
-            with open(flist_integrals, "r") as f:
-                integrals_num_files = len(f.readlines())
-
-            with open(flist_polygons, "r") as f:
-                polygons_num_files = len(f.readlines())
-
-            with open(flist_triangles, "r") as f:
-                triangles_num_files = len(f.readlines())
-
-            with open(flist_determinant, "r") as f:
-                determinant_num_files = len(f.readlines())
-
-            with open(flist_orthogonalize_vectors, "r") as f:
-                orthogonalize_vectors_num_files = len(f.readlines())
-
             if find_roots_num_files:
-                train_data.append(SampleTokenizer(
-                    math_dataroot=flist_find_roots,
+                train_data.append(Mathematica(
+                    dataroot=flist_find_roots,
                     tokenizer=tokenizer,
                     max_tokens=384 if args.arch == 'gpt2-xl' else 1024,
                     mode=args.arch,
                 ))
 
-            if invert_function_num_files:
-                train_data.append(SampleTokenizer(
-                    math_dataroot=flist_invert_function,
-                    tokenizer=tokenizer,
-                    max_tokens=384 if args.arch == 'gpt2-xl' else 1024,
-                    mode=args.arch,
-                ))
-
-            if derivatives_num_files:
-                train_data.append(SampleTokenizer(
-                    math_dataroot=flist_derivatives,
-                    tokenizer=tokenizer,
-                    max_tokens=384 if args.arch == 'gpt2-xl' else 1024,
-                    mode=args.arch,
-                ))
-
-            if integrals_num_files:
-                train_data.append(SampleTokenizer(
-                    math_dataroot=flist_integrals,
-                    tokenizer=tokenizer,
-                    max_tokens=384 if args.arch == 'gpt2-xl' else 1024,
-                    mode=args.arch,
-                ))
-
-            if polygons_num_files:
-                train_data.append(SampleTokenizer(
-                    math_dataroot=flist_polygons,
-                    tokenizer=tokenizer,
-                    max_tokens=384 if args.arch == 'gpt2-xl' else 1024,
-                    mode=args.arch,
-                ))
-
-            if triangles_num_files:
-                train_data.append(SampleTokenizer(
-                    math_dataroot=flist_triangles,
-                    tokenizer=tokenizer,
-                    max_tokens=384 if args.arch == 'gpt2-xl' else 1024,
-                    mode=args.arch,
-                ))
-
-            if determinant_num_files:
-                train_data.append(SampleTokenizer(
-                    math_dataroot=flist_determinant,
-                    tokenizer=tokenizer,
-                    max_tokens=384 if args.arch == 'gpt2-xl' else 1024,
-                    mode=args.arch,
-                ))
-
-            if orthogonalize_vectors_num_files:
-                train_data.append(SampleTokenizer(
-                    math_dataroot=flist_orthogonalize_vectors,
-                    tokenizer=tokenizer,
-                    max_tokens=384 if args.arch == 'gpt2-xl' else 1024,
-                    mode=args.arch,
-                ))
         for dset in train_data:
             print(f"{dset.__class__.__name__}: __len__ = {len(dset)}")
 
@@ -292,9 +197,7 @@ def main():
     ######### Arg parsing ###############################################################
 
     parser = argparse.ArgumentParser(description="Language Modelling on Code")
-    parser.add_argument('--arch', default='gpt2',
-                        choices=transformers.GPT2_PRETRAINED_MODEL_ARCHIVE_LIST + transformers.BERT_PRETRAINED_MODEL_ARCHIVE_LIST + transformers.T5_PRETRAINED_MODEL_ARCHIVE_LIST,
-                        help="The name of the model to be used")
+    parser.add_argument('--arch', default='gpt2', help="The name of the model to be used")
     parser.add_argument('--load', default=None, type=str, help="Model to be loaded after training is completed.")
 
     # Dataloading
@@ -309,7 +212,7 @@ def main():
     parser.add_argument('--lr', default=5e-5, type=float, help="Specifying the learning rate strategy")
     parser.add_argument('--weight-decay', default=0.05, type=float,
                         help="Regularization parameter used by the AdamW Optimizer")
-    parser.add_argument('--lr-warmup-steps', default=-1, type=int)
+    parser.add_argument('--lr-warmup-steps', default=0, type=int)
     parser.add_argument('--batch-size-per-replica', default=8, type=int, help="Specifying the Batch size")
     parser.add_argument('--grad-acc-steps', default=4, type=int, help="Used to accelerate the training process")
     parser.add_argument('--local_rank', default=-1, type=int)
@@ -317,14 +220,14 @@ def main():
                         help="Setting the amount of tpu cores available to accelerate processing")
 
     # Logging and stuff
-    parser.add_argument('--save-dir', default="checkpoints/TEMP", type=str,
+    parser.add_argument('--save-dir', default="trained_models\\GPT2", type=str,
                         help="Specify the directory where to save the model after training")
     parser.add_argument('--save-steps', default=0, type=int, help="Save steps to not start all over again when "
                                                                   "rerunning the training")
     parser.add_argument('--log-freq', default=5, type=int)
 
     args = parser.parse_args()
-    args.save_dir = os.path.join(args.save_dir, datetime.now().strftime("%m-%d-%Y__%H:%M:%S"))
+    args.save_dir = os.path.join(args.save_dir, datetime.now().strftime("%m-%d-%Y__%H-%M-%S"))
 
     ######### Start training ##########################################################
 
