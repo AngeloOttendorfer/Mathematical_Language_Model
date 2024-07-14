@@ -6,8 +6,8 @@ import transformers
 from tqdm import tqdm
 
 from math_equivalence import is_equiv
-from sample_tokenizer import SampleTokenizer
-from util import last_boxed_only_string
+from Dataset.mathematica import Mathematica
+from Dataset.util import last_boxed_only_string
 
 
 def remove_boxed(s):
@@ -56,24 +56,10 @@ def run_eval(args):
             print(f"Loading model from {args.load}")
             model = transformers.GPT2LMHeadModel.from_pretrained(args.load)
             print(f"Successfully loaded model from {args.load}")
-            tokenizer = transformers.GPT2Tokenizer.from_pretrained(args.load)
-        elif args.arch in {'bert-base-uncased'}:
-            print(f"Loading model from {args.load}")
-            model = transformers.BertForMaskedLM.from_pretrained(args.load)
-            print(f"Successfully loaded model from {args.load}")
-            tokenizer = transformers.BertTokenizer.from_pretrained(args.load)
-        elif args.arch in {'t5-base-uncased'}:
-            print(f"Loading model from {args.load}")
-            model = transformers.T5Model.from_pretrained(args.load)
-            print(f"Successfully loaded model from {args.load}")
-            tokenizer = transformers.T5Tokenizer.from_pretrained(args.load)
+            tokenizer = transformers.GPT2Tokenizer.from_pretrained(args.arch)
     else:
         if args.arch in {'gpt2'}:
             model = transformers.GPT2LMHeadModel.from_pretrained(args.arch)
-        elif args.arch in {'bert-base-uncased'}:
-            model = transformers.BertForMaskedLM.from_pretrained(args.arch)
-        elif args.arch in {'t5-base-uncased'}:
-            model = transformers.T5Model.from_pretrained(args.arch)
 
     eval_data = get_dataset(args)
     for inner_dset in eval_data.datasets:
@@ -81,8 +67,8 @@ def run_eval(args):
 
     dataloader = torch.utils.data.DataLoader(
         eval_data,
-        batch_size=1,
-        num_workers=0,
+        batch_size=args.batch_size_per_replica,
+        num_workers=args.workers,
         pin_memory=True,
     )
 
@@ -104,10 +90,10 @@ def run_eval(args):
                 skipped += 1
                 print("SKIPPING", batch['fnames'][0])
                 continue
-
-            fnames = batch['fnames'][0]
-            assert len(fnames) == 1
-            fnames_list.append(fnames[0])
+            print("batch: " + str(batch))
+            fname = batch['fnames'][0]
+            assert len(fname) == 1
+            fnames_list.append(fname[0])
 
             # ids upon the input_ids from the loaded model
             output_ids = model.generate(
@@ -124,32 +110,32 @@ def run_eval(args):
             output_tokens = get_model_output(batch['input_ids'][0], output_ids[0], tokenizer)
 
             output_str = tokenizer.decode(output_tokens)
+            correct_ans = tokenizer.decode(batch['labels'][0])
             output_full = output_str
-            output_str = last_boxed_only_string(output_str)
+            # output_str = last_boxed_only_string(output_str)
 
-            if args.math_mode == "eval_peeking":
+            """if args.math_mode == "eval_peeking":
                 answer_str = last_boxed_only_string(tokenizer.decode(batch['labels'][0]))
             else:
                 answer_str = tokenizer.decode(batch['labels'][0])
 
-            output, answer = remove_boxed(output_str), remove_boxed(answer_str)
+            output, answer = remove_boxed(output_str), remove_boxed(answer_str)"""
 
             print("Problem String:")
             print(tokenizer.decode(batch['input_ids'][0]) + "\n")
             print("Model output:")
             print(output_full)
-            print(output)
             print("Correct answer:")
-            print(answer)
+            print(correct_ans + "\n")
             print("fname")
-            print(fnames)
+            print(fname)
             print("--------------------------------------------")
 
-            outputs.append(output)
-            answers.append(answer)
+            outputs.append(output_full)
+            answers.append(correct_ans)
 
             # Check for answer equality and append it to either the amount of correct or wrong answer from the model
-            equiv = is_equiv(output, answer)
+            equiv = is_equiv(output_full, correct_ans)
             if equiv:
                 correct += 1
                 mean_max_probs_correct.append(mean_probs_sol)
@@ -158,14 +144,14 @@ def run_eval(args):
 
             total += 1
 
-    print(f"Average of mean_max_probs_correct = {sum(mean_max_probs_correct)}/{len(mean_max_probs_correct)} = ",
+    """print(f"Average of mean_max_probs_correct = {sum(mean_max_probs_correct)}/{len(mean_max_probs_correct)} = ",
           sum(mean_max_probs_correct) / len(mean_max_probs_correct))
     print(f"Average of mean_max_probs_wrong   = {sum(mean_max_probs_wrong)}/{len(mean_max_probs_wrong)} = ",
-          sum(mean_max_probs_wrong) / len(mean_max_probs_wrong))
+          sum(mean_max_probs_wrong) / len(mean_max_probs_wrong))"""
 
     # Saving the outputs and answers
     with open(f"outputs_answers_Temp2e-1_{args.arch}.txt", "w+") as f:
-        for k, (output, answer, prob_type, prob_level, fname) in enumerate(
+        for k, (output, answer, fname) in enumerate(
                 zip(outputs, answers, fnames_list)):
             f.write("{} OUTPUT: {} | ANSWER: {} | FNAME: {}\n".format(k, output, answer, fname))
 
@@ -192,7 +178,26 @@ def get_model_output(context, full_output, tokenizer):
     return ret
 
 
+def get_tokenizer(args):
+    """
+    :param args: the command line arguments (for the tokenizer we only need to specify the language model name
+    :return: the tokenizer for encoding the samples and decoding generated ids back to text
+    """
+    tokenizer = None
+    if args.arch in {'gpt2'}:
+        tokenizer = transformers.GPT2Tokenizer.from_pretrained(args.arch, return_tensors='pt')
+    elif args.arch in {'bert-base-uncased'}:
+        tokenizer = transformers.BertTokenizer.from_pretrained(args.arch, max_length=512, truncation=True,
+                                                               padding='max_length', return_tensors='pt')
+    elif args.arch in {'t5-base-uncased'}:
+        tokenizer = transformers.T5Tokenizer.from_pretrained(args.arch, max_length=512, truncation=True,
+                                                             padding='max_length', return_tensors='pt')
+    return tokenizer
+
+
 def get_dataset(args):
+    tokenizer = get_tokenizer(args)
+    print("math_dataroot: " + str(args.math_dataroot))
     """
     A Key difference to the training dataset is that here the tokenizer is set to None
     :param args: Command line arguments, specifically the dataroot argument
@@ -201,107 +206,19 @@ def get_dataset(args):
     eval_datasets = []
 
     if args.math_dataroot:
-        for math_dr in args.math_dataroot:
-            flist_find_roots = os.path.join(math_dr, "algebra/flist_testdata_find_roots.txt")
-            flist_invert_function = os.path.join(math_dr, "algebra/flist_testdata_invert_function.txt")
+        # for math_dr in args.math_dataroot:
+        flist_find_roots = args.math_dataroot + "\\find_roots"
 
-            flist_derivatives = os.path.join(math_dr, "calculus/flist_testdata_derivatives.txt")
-            flist_integrals = os.path.join(math_dr, "calculus/flist_testdata_integrals.txt")
+        with open(flist_find_roots, "r") as f:
+            find_roots_num_files = len(f.readlines())
 
-            flist_polygons = os.path.join(math_dr, "geometry/flist_testdata_polygons.txt")
-            flist_triangles = os.path.join(math_dr, "geometry/flist_testdata_triangles.txt")
-
-            flist_determinant = os.path.join(math_dr, "linear_algebra/flist_testdata_determinant.txt")
-            flist_orthogonalize_vectors = os.path.join(math_dr,
-                                                       "linear_algebra/flist_testdata_orthogonalize_vectors.txt")
-
-            with open(flist_find_roots, "r") as f:
-                find_roots_num_files = len(f.readlines())
-
-            with open(flist_invert_function, "r") as f:
-                invert_function_num_files = len(f.readlines())
-
-            with open(flist_derivatives, "r") as f:
-                derivatives_num_files = len(f.readlines())
-
-            with open(flist_integrals, "r") as f:
-                integrals_num_files = len(f.readlines())
-
-            with open(flist_polygons, "r") as f:
-                polygons_num_files = len(f.readlines())
-
-            with open(flist_triangles, "r") as f:
-                triangles_num_files = len(f.readlines())
-
-            with open(flist_determinant, "r") as f:
-                determinant_num_files = len(f.readlines())
-
-            with open(flist_orthogonalize_vectors, "r") as f:
-                orthogonalize_vectors_num_files = len(f.readlines())
-
-            if find_roots_num_files:
-                eval_datasets.append(SampleTokenizer(
-                    math_dataroot=flist_find_roots,
-                    tokenizer=None,
-                    max_tokens=384 if args.arch == 'gpt2-xl' else 1024,
-                    mode=args.arch,
-                ))
-
-            if invert_function_num_files:
-                eval_datasets.append(SampleTokenizer(
-                    math_dataroot=flist_invert_function,
-                    tokenizer=None,
-                    max_tokens=384 if args.arch == 'gpt2-xl' else 1024,
-                    mode=args.arch,
-                ))
-
-            if derivatives_num_files:
-                eval_datasets.append(SampleTokenizer(
-                    math_dataroot=flist_derivatives,
-                    tokenizer=None,
-                    max_tokens=384 if args.arch == 'gpt2-xl' else 1024,
-                    mode=args.arch,
-                ))
-
-            if integrals_num_files:
-                eval_datasets.append(SampleTokenizer(
-                    math_dataroot=flist_integrals,
-                    tokenizer=None,
-                    max_tokens=384 if args.arch == 'gpt2-xl' else 1024,
-                    mode=args.arch,
-                ))
-
-            if polygons_num_files:
-                eval_datasets.append(SampleTokenizer(
-                    math_dataroot=flist_polygons,
-                    tokenizer=None,
-                    max_tokens=384 if args.arch == 'gpt2-xl' else 1024,
-                    mode=args.arch,
-                ))
-
-            if triangles_num_files:
-                eval_datasets.append(SampleTokenizer(
-                    math_dataroot=flist_triangles,
-                    tokenizer=None,
-                    max_tokens=384 if args.arch == 'gpt2-xl' else 1024,
-                    mode=args.arch,
-                ))
-
-            if determinant_num_files:
-                eval_datasets.append(SampleTokenizer(
-                    math_dataroot=flist_determinant,
-                    tokenizer=None,
-                    max_tokens=384 if args.arch == 'gpt2-xl' else 1024,
-                    mode=args.arch,
-                ))
-
-            if orthogonalize_vectors_num_files:
-                eval_datasets.append(SampleTokenizer(
-                    math_dataroot=flist_orthogonalize_vectors,
-                    tokenizer=None,
-                    max_tokens=384 if args.arch == 'gpt2-xl' else 1024,
-                    mode=args.arch,
-                ))
+        if find_roots_num_files:
+            eval_datasets.append(Mathematica(
+                dataroot=flist_find_roots,
+                tokenizer=None,
+                max_tokens=384 if args.arch == 'gpt2-xl' else 1024,
+                mode=args.math_mode,
+            ))
 
         eval_data = torch.utils.data.ConcatDataset(eval_datasets)
         return eval_data
@@ -311,19 +228,22 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(description="Language Modelling on Code")
-    parser.add_argument('--arch', default='gpt2', choices=transformers.GPT2_PRETRAINED_MODEL_ARCHIVE_LIST + transformers.BERT_PRETRAINED_MODEL_ARCHIVE_LIST + transformers.T5_PRETRAINED_MODEL_ARCHIVE_LIST,
-                        help="The name of the model to be used")
+    parser.add_argument('--arch', default='gpt2', help="The name of the model to be used")
     parser.add_argument('--load', default=None, type=str, help="Model to be loaded for evaluation")
     parser.add_argument('--num-beams', default=20, type=int)
 
     # Dataloading
-    parser.add_argument('--math_dataroot', default=None, type=str, help="To specify the path where the test data is stored")
-    parser.add_argument('--math_mode', default='gpt2-eval', type=str, help="Specify upon which pretrained model the evaluation shall be done")
+    parser.add_argument('--math_dataroot', default=None, type=str,
+                        help="To specify the path where the test data is stored")
+    parser.add_argument('--math_mode', default='gpt2-eval', type=str,
+                        help="Specify upon which pretrained model the evaluation shall be done")
     parser.add_argument('--peek-fraction', type=float, default=1.0)
 
     # Others
+    parser.add_argument('--batch-size-per-replica', default=8, type=int, help="Specifying the Batch size")
     parser.add_argument('--workers', default=4, type=int)
 
     args = parser.parse_args()
 
     run_eval(args)
+
