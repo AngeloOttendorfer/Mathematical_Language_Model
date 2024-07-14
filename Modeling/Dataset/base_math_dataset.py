@@ -6,7 +6,7 @@ import torch
 import torch.nn.functional as F
 
 
-class MathDataset(torch.utils.data.Dataset):
+class BaseMathDataset(torch.utils.data.Dataset):
     def __init__(self, math_dataroot, tokenizer, mode, max_tokens, sample_inputs=None, encodings=None, packing=None,
                  randomize=None, pack_end=None, clean_numbers=True, peek_fraction=(0.1, 1.0)):
         self.math_dataroot = math_dataroot
