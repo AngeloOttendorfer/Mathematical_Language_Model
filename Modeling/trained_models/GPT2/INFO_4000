@@ -1,0 +1,33 @@
+model type: GPT2
+-----------------
+1. Training (1 C)
+    {'loss': 0.3759, 'grad_norm': 5.842862606048584, 'learning_rate': 5e-06, 'epoch': 1.0}
+    {'train_runtime': 7632.3344, 'train_samples_per_second': 2.358, 'train_steps_per_second': 0.59, 'train_loss': 0.6354225758976406, 'epoch': 1.0}
+
+2. Training (2 C)
+    {'loss': 0.4487, 'grad_norm': 5.741856098175049, 'learning_rate': 5e-06, 'epoch': 1.0}
+    {'train_runtime': 8520.0891, 'train_samples_per_second': 2.347, 'train_steps_per_second': 0.587, 'train_loss': 0.5895825718641281, 'epoch': 1.0}
+
+3. Training (3 C)
+    {'loss': 0.6406, 'grad_norm': 3.689661741256714, 'learning_rate': 5e-06, 'epoch': 1.0}
+    {'train_runtime': 9278.5943, 'train_samples_per_second': 2.371, 'train_steps_per_second': 0.593, 'train_loss': 0.5904022076780145, 'epoch': 1.0}
+
+4. Training (4 C)
+    {'loss': 0.2621, 'grad_norm': 2.692105293273926, 'learning_rate': 5e-06, 'epoch': 1.0}
+    {'train_runtime': 10290.6998, 'train_samples_per_second': 2.332, 'train_steps_per_second': 0.583, 'train_loss': 0.5641862619519233, 'epoch': 1.0}
+
+5. Training (5 C)
+    {'loss': 0.4284, 'grad_norm': 4.505690574645996, 'learning_rate': 5e-06, 'epoch': 1.0}
+    {'train_runtime': 10898.6725, 'train_samples_per_second': 2.386, 'train_steps_per_second': 0.596, 'train_loss': 0.5887643347703494, 'epoch': 1.0}
+
+6. Training (6 C)
+    {'loss': 0.7015, 'grad_norm': 2.395443916320801, 'learning_rate': 5e-06, 'epoch': 1.0}
+    {'train_runtime': 11895.3906, 'train_samples_per_second': 2.354, 'train_steps_per_second': 0.588, 'train_loss': 0.6002669135843004, 'epoch': 1.0}
+
+7. Training (7 C)
+    {'loss': 0.4913, 'grad_norm': 4.723231315612793, 'learning_rate': 5e-06, 'epoch': 1.0}
+    {'train_runtime': 12841.1411, 'train_samples_per_second': 2.336, 'train_steps_per_second': 0.584, 'train_loss': 0.628878340403239, 'epoch': 1.0}
+
+8. Training (8 C)
+    {'loss': 0.4324, 'grad_norm': 3.088721752166748, 'learning_rate': 5e-06, 'epoch': 1.0}
+    {'train_runtime': 14226.6895, 'train_samples_per_second': 2.249, 'train_steps_per_second': 0.562, 'train_loss': 0.6081643515825271, 'epoch': 1.0}

@@ -73,11 +73,14 @@ class Mathematica(BaseMathDataset):
             answer = _clean_numbers(answer)
 
         answer_final = last_boxed_only_string(answer)
+        print("question: " + str(question))
+        print("answer: " + str(answer))
 
         question_ids = torch.LongTensor(self.tokenizer.encode("\nQUESTION:\n" + question, verbose=False))
         sep_ids = torch.LongTensor(self.tokenizer.encode("\nFULL SOLUTION.\n", verbose=False))
         answer_ids = self.tokenizer.encode(answer, verbose=False)
-        answer_ids.append(self.tokenizer.eos_token_id)
+        print("answer_ids: " + str(answer_ids))
+        # answer_ids.append(self.tokenizer.eos_token_id)
 
         if self.mode in {'t5-base-uncased'}:
             answer_ids = answer_ids['input_ids']

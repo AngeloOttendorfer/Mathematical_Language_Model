@@ -5,8 +5,9 @@
       <sourceFolder url="file://$MODULE_DIR$/Modeling" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/Modeling/Dataset" isTestSource="false" />
       <excludeFolder url="file://$MODULE_DIR$/.venv" />
+      <excludeFolder url="file://$MODULE_DIR$/venv" />
     </content>
-    <orderEntry type="inheritedJdk" />
+    <orderEntry type="jdk" jdkName="Python 3.9 (Mathematical_Language_Model)" jdkType="Python SDK" />
     <orderEntry type="sourceFolder" forTests="false" />
   </component>
 </module>

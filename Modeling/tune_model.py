@@ -73,6 +73,7 @@ def train_model(args, train_data):
     model = None
 
     # Calculate the steps needed for the training process. Amount depends on the cpu or gpu being used
+    print("cuda_device_count: " + str(torch.cuda.device_count()))
     if not args.save_steps:
         save_steps = len(train_data)
         save_steps = int(save_steps / args.grad_acc_steps)
@@ -92,10 +93,16 @@ def train_model(args, train_data):
         if args.arch in {'gpt2'}:
             model = transformers.GPT2LMHeadModel.from_pretrained(args.load)
             print(f"Loaded GPT2 model from {args.load}")
+        elif args.arch in {'tbs17/MathBERT'}:
+            model = transformers.BertLMHeadModel.from_pretrained(args.load, is_decoder=True)
+            print(f"Loaded MathBert model from {args.load}")
     else:
         if args.arch in {'gpt2'}:
             model = transformers.GPT2LMHeadModel.from_pretrained(args.arch, return_dict=True)
             print(f"Loaded GPT2 model from {args.arch}")
+        elif args.arch in {'tbs17/MathBERT'}:
+            model = transformers.BertLMHeadModel.from_pretrained(args.arch, return_dict=True, is_decoder=True)
+            print(f"Loaded MathBert model from {args.arch}")
 
     start_epoch = 0
     start_iteration = 0
@@ -153,9 +160,8 @@ def get_tokenizer(args):
     tokenizer = None
     if args.arch in {'gpt2'}:
         tokenizer = transformers.GPT2Tokenizer.from_pretrained(args.arch, return_tensors='pt')
-    elif args.arch in {'bert-base-uncased'}:
-        tokenizer = transformers.BertTokenizer.from_pretrained(args.arch, max_length=512, truncation=True,
-                                                               padding='max_length', return_tensors='pt')
+    elif args.arch in {'tbs17/MathBERT'}:
+        tokenizer = transformers.BertTokenizer.from_pretrained(args.arch, return_tensors='pt')
     elif args.arch in {'t5-base-uncased'}:
         tokenizer = transformers.T5Tokenizer.from_pretrained(args.arch, max_length=512, truncation=True,
                                                              padding='max_length', return_tensors='pt')
@@ -172,25 +178,103 @@ def get_dataset(args):
     train_data = []
 
     if args.math_dataroot:
-        for math_dr in args.math_dataroot:
-            print("flist_find_roots: " + os.path.join(args.math_dataroot, "\\test_data\\algebra\\find_roots"))
-            flist_find_roots = os.path.join(args.math_dataroot, "\\test_data\\algebra\\find_roots")
+        # for math_dr in args.math_dataroot:
 
-            with open(flist_find_roots, "r") as f:
-                find_roots_num_files = len(f.readlines())
+        flist_find_roots = args.math_dataroot + "\\train_data\\algebra\\find_roots"
+        # flist_invert_function = args.math_dataroot + "\\train_data\\algebra\\invert_function"
+        # flist_derivatives = args.math_dataroot + "\\train_data\\calculus\\derivatives"
+        # flist_integrals = args.math_dataroot + "\\train_data\\calculus\\integrals"
+        # flist_polygons = args.math_dataroot + "\\train_data\\geometry\\polygons"
+        # flist_triangles = args.math_dataroot + "\\train_data\\geometry\\triangles"
+        # flist_determinant = args.math_dataroot + "\\train_data\\linear_algebra\\determinant"
+        # flist_orthogonalize_vectors = args.math_dataroot + "\\train_data\\linear_algebra\\orthogonalize_vectors"
 
-            if find_roots_num_files:
-                train_data.append(Mathematica(
-                    dataroot=flist_find_roots,
-                    tokenizer=tokenizer,
-                    max_tokens=384 if args.arch == 'gpt2-xl' else 1024,
-                    mode=args.arch,
-                ))
+        with open(flist_find_roots, "r") as f:
+            find_roots_num_files = len(f.readlines())
 
-        for dset in train_data:
-            print(f"{dset.__class__.__name__}: __len__ = {len(dset)}")
+        # with open(flist_invert_function, "r") as f:
+            # invert_function_num_files = len(f.readlines())
 
-        return torch.utils.data.ConcatDataset(train_data)
+        # with open(flist_derivatives, "r") as f:
+            # derivatives_num_files = len(f.readlines())
+
+        # with open(flist_integrals, "r") as f:
+            # integrals_num_files = len(f.readlines())
+
+        # with open(flist_polygons, "r") as f:
+            # polygons_num_files = len(f.readlines())
+
+        # with open(flist_triangles, "r") as f:
+            # triangles_num_files = len(f.readlines())
+
+        # with open(flist_determinant, "r") as f:
+            # determinant_files = len(f.readlines())
+
+        # with open(flist_orthogonalize_vectors, "r") as f:
+            # orthogonalize_vectors_num_files = len(f.readlines())
+
+        if find_roots_num_files:
+            train_data.append(Mathematica(
+                dataroot=flist_find_roots,
+                tokenizer=tokenizer,
+                max_tokens=512 if args.arch == 'tbs17/MathBERT' else 1024,
+                mode=args.arch,
+            ))
+        """if invert_function_num_files:
+            train_data.append(Mathematica(
+                dataroot=flist_invert_function,
+                tokenizer=tokenizer,
+                max_tokens=512 if args.arch == 'tbs17/MathBERT' else 1024,
+                mode=args.arch,
+            ))"""
+        """if derivatives_num_files:
+            train_data.append(Mathematica(
+                dataroot=flist_derivatives,
+                tokenizer=tokenizer,
+                max_tokens=512 if args.arch == 'tbs17/MathBERT' else 1024,
+                mode=args.arch,
+            ))"""
+        """if integrals_num_files:
+            train_data.append(Mathematica(
+                dataroot=flist_integrals,
+                tokenizer=tokenizer,
+                max_tokens=512 if args.arch == 'tbs17/MathBERT' else 1024,
+                mode=args.arch,
+            ))"""
+        """if polygons_num_files:
+            train_data.append(Mathematica(
+                dataroot=flist_polygons,
+                tokenizer=tokenizer,
+                max_tokens=512 if args.arch == 'tbs17/MathBERT' else 1024,
+                mode=args.arch,
+            ))"""
+        """if triangles_num_files:
+            train_data.append(Mathematica(
+                dataroot=flist_triangles,
+                tokenizer=tokenizer,
+                max_tokens=512 if args.arch == 'tbs17/MathBERT' else 1024,
+                mode=args.arch,
+            ))"""
+        """if determinant_files:
+            train_data.append(Mathematica(
+                dataroot=flist_determinant,
+                tokenizer=tokenizer,
+                max_tokens=512 if args.arch == 'tbs17/MathBERT' else 1024,
+                mode=args.arch,
+            ))"""
+        """if orthogonalize_vectors_num_files:
+            train_data.append(Mathematica(
+                dataroot=flist_orthogonalize_vectors,
+                tokenizer=tokenizer,
+                max_tokens=512 if args.arch == 'tbs17/MathBERT' else 1024,
+                mode=args.arch,
+            ))"""
+
+
+    for dset in train_data:
+        print(f"{dset.__class__.__name__}: __len__ = {len(dset)}")
+
+    return torch.utils.data.ConcatDataset(train_data)
 
 
 def main():
@@ -201,7 +285,7 @@ def main():
     parser.add_argument('--load', default=None, type=str, help="Model to be loaded after training is completed.")
 
     # Dataloading
-    parser.add_argument('--math_dataroot', default=None, type=str, action='append',
+    parser.add_argument('--math_dataroot', default=None, type=str,
                         help="To specify the path where the train data is stored")
     parser.add_argument('--MATH-peek-min', default=0.1, type=float)
     parser.add_argument('--MATH-peek-max', default=1.0, type=float)
@@ -220,7 +304,7 @@ def main():
                         help="Setting the amount of tpu cores available to accelerate processing")
 
     # Logging and stuff
-    parser.add_argument('--save-dir', default="trained_models\\GPT2", type=str,
+    parser.add_argument('--save-dir', default="trained_models\\MathBERT", type=str,
                         help="Specify the directory where to save the model after training")
     parser.add_argument('--save-steps', default=0, type=int, help="Save steps to not start all over again when "
                                                                   "rerunning the training")

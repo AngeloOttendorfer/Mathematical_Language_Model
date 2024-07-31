@@ -57,9 +57,16 @@ def run_eval(args):
             model = transformers.GPT2LMHeadModel.from_pretrained(args.load)
             print(f"Successfully loaded model from {args.load}")
             tokenizer = transformers.GPT2Tokenizer.from_pretrained(args.arch)
+        elif args.arch in {'tbs17/MathBERT'}:
+            print(f"Loading model from {args.load}")
+            model = transformers.BertLMHeadModel.from_pretrained(args.load, is_decoder=True)
+            print(f"Successfully loaded model from {args.load}")
+            tokenizer = transformers.BertTokenizer.from_pretrained(args.arch)
     else:
         if args.arch in {'gpt2'}:
             model = transformers.GPT2LMHeadModel.from_pretrained(args.arch)
+        elif args.arch in {'tbs17/MathBERT'}:
+            model = transformers.BertLMHeadModel.from_pretrained(args.arch, is_decoder=True)
 
     eval_data = get_dataset(args)
     for inner_dset in eval_data.datasets:
@@ -84,6 +91,7 @@ def run_eval(args):
         skipped = 0
         mean_max_probs_correct = []
         mean_max_probs_wrong = []
+        print("cuda_device_count: " + str(torch.cuda.device_count()))
         for i, batch in enumerate(tqdm(dataloader)):
 
             if torch.sum(batch['input_ids']) == 0:
@@ -186,9 +194,8 @@ def get_tokenizer(args):
     tokenizer = None
     if args.arch in {'gpt2'}:
         tokenizer = transformers.GPT2Tokenizer.from_pretrained(args.arch, return_tensors='pt')
-    elif args.arch in {'bert-base-uncased'}:
-        tokenizer = transformers.BertTokenizer.from_pretrained(args.arch, max_length=512, truncation=True,
-                                                               padding='max_length', return_tensors='pt')
+    elif args.arch in {'tbs17/MathBERT'}:
+        tokenizer = transformers.BertTokenizer.from_pretrained(args.arch, return_tensors=True)
     elif args.arch in {'t5-base-uncased'}:
         tokenizer = transformers.T5Tokenizer.from_pretrained(args.arch, max_length=512, truncation=True,
                                                              padding='max_length', return_tensors='pt')
@@ -197,7 +204,6 @@ def get_tokenizer(args):
 
 def get_dataset(args):
     tokenizer = get_tokenizer(args)
-    print("math_dataroot: " + str(args.math_dataroot))
     """
     A Key difference to the training dataset is that here the tokenizer is set to None
     :param args: Command line arguments, specifically the dataroot argument
@@ -207,18 +213,95 @@ def get_dataset(args):
 
     if args.math_dataroot:
         # for math_dr in args.math_dataroot:
-        flist_find_roots = args.math_dataroot + "\\find_roots"
+        flist_find_roots = args.math_dataroot + "\\test_data\\algebra\\find_roots"
+        flist_invert_function = args.math_dataroot + "\\test_data\\algebra\\invert_function"
+        flist_derivatives = args.math_dataroot + "\\test_data\\calculus\\derivatives"
+        flist_integrals = args.math_dataroot + "\\test_data\\calculus\\integrals"
+        flist_polygons = args.math_dataroot + "\\test_data\\geometry\\polygons"
+        flist_triangles = args.math_dataroot + "\\test_data\\geometry\\triangles"
+        flist_determinant = args.math_dataroot + "\\test_data\\linear_algebra\\determinant"
+        flist_orthogonalize_vectors = args.math_dataroot + "\\test_data\\linear_algebra\\orthogonalize_vectors"
 
         with open(flist_find_roots, "r") as f:
             find_roots_num_files = len(f.readlines())
+
+        # with open(flist_invert_function, "r") as f:
+            # invert_function_num_files = len(f.readlines())
+
+        # with open(flist_derivatives, "r") as f:
+            # derivatives_num_files = len(f.readlines())
+
+        # with open(flist_integrals, "r") as f:
+            # integrals_num_files = len(f.readlines())
+
+        # with open(flist_polygons, "r") as f:
+            # polygons_num_files = len(f.readlines())
+
+        # with open(flist_triangles, "r") as f:
+            # triangles_num_files = len(f.readlines())
+
+        # with open(flist_determinant, "r") as f:
+            # determinant_files = len(f.readlines())
+
+        # with open(flist_orthogonalize_vectors, "r") as f:
+            # orthogonalize_vectors_num_files = len(f.readlines())
 
         if find_roots_num_files:
             eval_datasets.append(Mathematica(
                 dataroot=flist_find_roots,
                 tokenizer=None,
-                max_tokens=384 if args.arch == 'gpt2-xl' else 1024,
-                mode=args.math_mode,
+                max_tokens=512 if args.arch == 'tbs17/MathBERT' else 1024,
+                mode='tbs17/MathBERT-eval',
             ))
+        """if invert_function_num_files:
+            train_data.append(Mathematica(
+                dataroot=flist_invert_function,
+                tokenizer=tokenizer,
+                max_tokens=512 if args.arch == 'tbs17/MathBERT' else 1024,
+                mode=args.arch,
+            ))"""
+        """if derivatives_num_files:
+            train_data.append(Mathematica(
+                dataroot=flist_derivatives,
+                tokenizer=tokenizer,
+                max_tokens=512 if args.arch == 'tbs17/MathBERT' else 1024,
+                mode=args.arch,
+            ))"""
+        """if integrals_num_files:
+            train_data.append(Mathematica(
+                dataroot=flist_integrals,
+                tokenizer=tokenizer,
+                max_tokens=512 if args.arch == 'tbs17/MathBERT' else 1024,
+                mode=args.arch,
+            ))"""
+        """if polygons_num_files:
+            train_data.append(Mathematica(
+                dataroot=flist_polygons,
+                tokenizer=tokenizer,
+                max_tokens=512 if args.arch == 'tbs17/MathBERT' else 1024,
+                mode=args.arch,
+            ))"""
+        """if triangles_num_files:
+            train_data.append(Mathematica(
+                dataroot=flist_triangles,
+                tokenizer=tokenizer,
+                max_tokens=512 if args.arch == 'tbs17/MathBERT' else 1024,
+                mode=args.arch,
+            ))"""
+        """if determinant_files:
+            train_data.append(Mathematica(
+                dataroot=flist_determinant,
+                tokenizer=tokenizer,
+                max_tokens=512 if args.arch == 'tbs17/MathBERT' else 1024,
+                mode=args.arch,
+            ))"""
+        """if orthogonalize_vectors_num_files:
+            train_data.append(Mathematica(
+                dataroot=flist_orthogonalize_vectors,
+                tokenizer=tokenizer,
+                max_tokens=512 if args.arch == 'tbs17/MathBERT' else 1024,
+                mode=args.arch,
+            ))"""
 
         eval_data = torch.utils.data.ConcatDataset(eval_datasets)
         return eval_data
@@ -241,7 +324,7 @@ if __name__ == "__main__":
 
     # Others
     parser.add_argument('--batch-size-per-replica', default=8, type=int, help="Specifying the Batch size")
-    parser.add_argument('--workers', default=4, type=int)
+    parser.add_argument('--workers', default=1, type=int)
 
     args = parser.parse_args()
 

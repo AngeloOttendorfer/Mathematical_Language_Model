@@ -21,14 +21,14 @@ class BaseMathDataset(torch.utils.data.Dataset):
 
         print("mode: " + str(mode))
 
-        if self.mode in {'gpt2'}:
+        if self.mode in {'gpt2', 'tbs17/MathBERT'}:
             print('XXXXXXX')
             self.clean_sample = self.clean_filter_sample
             self.packing = True
             self.randomize = True
             self.include_fnames = False
             self.pack_end = True
-        elif self.mode in {'gpt2-eval'}:
+        elif self.mode in {'gpt2-eval', 'tbs17/MathBERT-eval'}:
             self.clean_sample = self.clean_filter_sample_eval
             print("clean_sample: " + str(self.clean_sample))
             self.packing = True
